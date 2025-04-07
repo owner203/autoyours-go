@@ -1,2 +1,2 @@
 # autoyours-go
-Save your time from lunch reservation. A reimplemented version in Go.
+Save your time from lunch reservation. A reimplementation of autoyours in Go.
