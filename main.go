@@ -32,25 +32,26 @@ type Setups struct {
 	NextFriday2    int    `toml:"next_friday2"`
 }
 
+type Config struct {
+	Account Account `toml:"account"`
+	Setups  Setups  `toml:"setups"`
+}
+
 func configLoad() (Account, Setups, error) {
-	var account Account
-	var setups Setups
+	var config Config
 
 	file, err := os.Open("config.toml")
 	if err != nil {
-		return account, setups, err
+		return Account{}, Setups{}, err
 	}
 	defer file.Close()
 
 	decoder := toml.NewDecoder(file)
-	if _, err := decoder.Decode(&account); err != nil {
-		return account, setups, err
-	}
-	if _, err := decoder.Decode(&setups); err != nil {
-		return account, setups, err
+	if _, err := decoder.Decode(&config); err != nil {
+		return Account{}, Setups{}, err
 	}
 
-	return account, setups, nil
+	return config.Account, config.Setups, nil
 }
 
 func main() {
