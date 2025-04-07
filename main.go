@@ -37,29 +37,29 @@ type Config struct {
 	Setups  Setups  `toml:"setups"`
 }
 
-func configLoad() (Account, Setups, error) {
+func configLoad() (Config, error) {
+	log.Println("Loading configuration...")
 	var config Config
 
 	file, err := os.Open("config.toml")
 	if err != nil {
-		return Account{}, Setups{}, err
+		return Config{}, err
 	}
 	defer file.Close()
 
 	decoder := toml.NewDecoder(file)
 	if _, err := decoder.Decode(&config); err != nil {
-		return Account{}, Setups{}, err
+		return Config{}, err
 	}
 
-	return config.Account, config.Setups, nil
+	return config, nil
 }
 
 func main() {
-	account, setups, err := configLoad()
+	config, err := configLoad()
 	if err != nil {
 		log.Fatalf("Error loading configuration: %v", err)
 	}
 
-	fmt.Printf("Account: %+v\n", account)
-	fmt.Printf("Setups: %+v\n", setups)
+	fmt.Printf("Config: %+v\n", config)
 }
