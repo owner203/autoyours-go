@@ -9,6 +9,11 @@ customer_email = "hanako-tokyo@autoyours.jp" # Set your email address here.
 [setups]
 service_id = "S001"          # 東京(S001)
 service_menu_id = "S0000063" # セルリアン(S0000063) フクラス(S0000064)
+current_monday = 0           # Current Monday
+current_tuesday = 0          # Current Tuesday
+current_wednesday = 0        # Current Wednesday
+current_thursday = 0         # Current Thursday
+current_friday = 0           # Current Friday
 next_monday1 = 1230          # Next Monday
 next_tuesday1 = 1200         # Next Tuesday
 next_wednesday1 = 1300       # Next Wednesday
