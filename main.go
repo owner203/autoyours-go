@@ -52,7 +52,8 @@ const (
 )
 
 const (
-	loginURL = "https://gmoyours.dt-r.com/customer/ajaxLogin.php"
+	loginURL   = "https://gmoyours.dt-r.com/customer/ajaxLogin.php"
+	bookingURL = "https://gmoyours.dt-r.com/reservation/ajaxBooking.php"
 )
 
 var (
@@ -258,6 +259,65 @@ func accountLogin() error {
 	}
 }
 
+func bookingRequest(startUnixTime int64) error {
+	log.Println("[bookingRequest]Begin")
+
+	endUnixTime := startUnixTime + 1800
+	calendarID := fmt.Sprintf("%s.%s..%d.%d", config.Setups.ServiceID, config.Setups.ServiceMenuID, startUnixTime, endUnixTime)
+
+	params := url.Values{}
+	params.Add("action", "regist")
+	params.Add("booking_data[calendar_id]", calendarID)
+	params.Add("booking_data[service_id]", config.Setups.ServiceID)
+	params.Add("booking_data[service_menu_id]", config.Setups.ServiceMenuID)
+	params.Add("booking_data[start_unixtime]", fmt.Sprintf("%d", startUnixTime))
+	params.Add("booking_data[end_unixtime]", fmt.Sprintf("%d", endUnixTime))
+	params.Add("booking_data[num]", "1")
+	params.Add("booking_data[customer_id]", config.Account.CustomerID)
+	params.Add("booking_data[customer_company_name]", config.Account.CustomerCompanyName)
+	params.Add("booking_data[customer_name]", config.Account.CustomerName)
+	params.Add("booking_data[customer_email]", config.Account.CustomerEmail)
+	params.Add("confirm", "1")
+
+	fullURL := bookingURL + "?" + params.Encode()
+
+	req, err := http.NewRequest("POST", fullURL, nil)
+	if err != nil {
+		log.Printf("Failed to create booking request: %v", err)
+		return err
+	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("User-Agent", "Thunder Client (https://www.thunderclient.com)")
+	req.Header.Set("Cookie", cookie)
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error server access: %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		err = fmt.Errorf("error HTTP status (%s)", resp.Status)
+		log.Printf("Error HTTP status: %v", err)
+		return err
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Error reading response body: %v", err)
+		return err
+	}
+	bodyStr := string(bodyBytes)
+
+	fmt.Println(bodyStr)
+	log.Println("[bookingRequest]End")
+	return nil
+}
+
 func main() {
 	err := configLoad()
 	if err != nil {
@@ -269,5 +329,12 @@ func main() {
 	err = accountLogin()
 	if err != nil {
 		log.Fatalf("Login failed: %v", err)
+	}
+
+	for _, startUnixTime := range todo {
+		err = bookingRequest(startUnixTime)
+		if err != nil {
+			log.Fatalf("Booking request failed: %v", err)
+		}
 	}
 }
