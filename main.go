@@ -211,7 +211,7 @@ func accountLogin() error {
 
 	req, err := http.NewRequest("POST", fullURL, nil)
 	if err != nil {
-		log.Println("Failed to create request:", err)
+		log.Printf("Failed to create request: %v", err)
 		return err
 	}
 	req.Header.Set("Accept", "*/*")
@@ -222,14 +222,14 @@ func accountLogin() error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println("Error server access:", err)
+		log.Printf("Error server access: %v", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		err = fmt.Errorf("error HTTP status (%s)", resp.Status)
-		log.Println("Error HTTP status:", err)
+		log.Printf("Error HTTP status: %v", err)
 		return err
 	}
 
@@ -237,14 +237,14 @@ func accountLogin() error {
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("Error reading response body:", err)
+		log.Printf("Error reading response body: %v", err)
 		return err
 	}
 	bodyStr := string(bodyBytes)
 
 	if bodyStr == "" {
 		err = fmt.Errorf("empty response body")
-		log.Println("Unexpected response:", err)
+		log.Printf("Unexpected response: %v", err)
 		return err
 	} else if bodyStr == "1" {
 		fmt.Println("Login succeeded.")
@@ -253,7 +253,7 @@ func accountLogin() error {
 		return nil
 	} else {
 		err = fmt.Errorf("login failed")
-		log.Println("Error:", err)
+		log.Printf("Error: %v", err)
 		return err
 	}
 }
