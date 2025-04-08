@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -260,10 +261,10 @@ func accountLogin() error {
 }
 
 func bookingRequest(startUnixTime int64) error {
-	log.Println("[bookingRequest]Begin")
-
 	endUnixTime := startUnixTime + 1800
 	calendarID := fmt.Sprintf("%s.%s..%d.%d", config.Setups.ServiceID, config.Setups.ServiceMenuID, startUnixTime, endUnixTime)
+
+	log.Printf("[bookingRequest]Begin (%s)\n", calendarID)
 
 	params := url.Values{}
 	params.Add("action", "regist")
@@ -306,15 +307,13 @@ func bookingRequest(startUnixTime int64) error {
 		return err
 	}
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	_, err = io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("Error reading response body: %v", err)
 		return err
 	}
-	bodyStr := string(bodyBytes)
 
-	fmt.Println(bodyStr)
-	log.Println("[bookingRequest]End")
+	log.Printf("[bookingRequest]End (%s)\n", calendarID)
 	return nil
 }
 
@@ -331,10 +330,15 @@ func main() {
 		log.Fatalf("Login failed: %v", err)
 	}
 
+	var wg sync.WaitGroup
 	for _, startUnixTime := range todo {
-		err = bookingRequest(startUnixTime)
-		if err != nil {
-			log.Fatalf("Booking request failed: %v", err)
-		}
+		wg.Add(1)
+		go func(t int64) {
+			defer wg.Done()
+			if err := bookingRequest(t); err != nil {
+				log.Fatalf("Booking request for unix time %d failed: %v", startUnixTime, err)
+			}
+		}(startUnixTime)
 	}
+	wg.Wait()
 }
