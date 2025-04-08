@@ -22,18 +22,23 @@ type Account struct {
 }
 
 type Setups struct {
-	ServiceID      string `toml:"service_id"`
-	ServiceMenuID  string `toml:"service_menu_id"`
-	NextMonday1    int    `toml:"next_monday1"`
-	NextTuesday1   int    `toml:"next_tuesday1"`
-	NextWednesday1 int    `toml:"next_wednesday1"`
-	NextThursday1  int    `toml:"next_thursday1"`
-	NextFriday1    int    `toml:"next_friday1"`
-	NextMonday2    int    `toml:"next_monday2"`
-	NextTuesday2   int    `toml:"next_tuesday2"`
-	NextWednesday2 int    `toml:"next_wednesday2"`
-	NextThursday2  int    `toml:"next_thursday2"`
-	NextFriday2    int    `toml:"next_friday2"`
+	ServiceID        string `toml:"service_id"`
+	ServiceMenuID    string `toml:"service_menu_id"`
+	CurrentMonday    int    `toml:"current_monday"`
+	CurrentTuesday   int    `toml:"current_tuesday"`
+	CurrentWednesday int    `toml:"current_wednesday"`
+	CurrentThursday  int    `toml:"current_thursday"`
+	CurrentFriday    int    `toml:"current_friday"`
+	NextMonday1      int    `toml:"next_monday1"`
+	NextTuesday1     int    `toml:"next_tuesday1"`
+	NextWednesday1   int    `toml:"next_wednesday1"`
+	NextThursday1    int    `toml:"next_thursday1"`
+	NextFriday1      int    `toml:"next_friday1"`
+	NextMonday2      int    `toml:"next_monday2"`
+	NextTuesday2     int    `toml:"next_tuesday2"`
+	NextWednesday2   int    `toml:"next_wednesday2"`
+	NextThursday2    int    `toml:"next_thursday2"`
+	NextFriday2      int    `toml:"next_friday2"`
 }
 
 type Config struct {
@@ -86,6 +91,11 @@ func configPrint() {
 	fmt.Println("[setups]")
 	fmt.Println("service_id:", config.Setups.ServiceID)
 	fmt.Println("service_menu_id:", config.Setups.ServiceMenuID)
+	fmt.Println("current_monday:", config.Setups.CurrentMonday)
+	fmt.Println("current_tuesday:", config.Setups.CurrentTuesday)
+	fmt.Println("current_wednesday:", config.Setups.CurrentWednesday)
+	fmt.Println("current_thursday:", config.Setups.CurrentThursday)
+	fmt.Println("current_friday:", config.Setups.CurrentFriday)
 	fmt.Println("next_monday1:", config.Setups.NextMonday1)
 	fmt.Println("next_tuesday1:", config.Setups.NextTuesday1)
 	fmt.Println("next_wednesday1:", config.Setups.NextWednesday1)
@@ -101,17 +111,29 @@ func configPrint() {
 func todoGenerate() {
 	log.Println("[todoGenerate]Begin")
 
-	nextMondayDate1 := getTargetWeekdayDate(time.Monday)
-	nextTuesdayDate1 := getTargetWeekdayDate(time.Tuesday)
-	nextWednesdayDate1 := getTargetWeekdayDate(time.Wednesday)
-	nextThursdayDate1 := getTargetWeekdayDate(time.Thursday)
-	nextFridayDate1 := getTargetWeekdayDate(time.Friday)
+	currentMonday := getTargetWeekdayDate(time.Monday)
+	currentTuesday := getTargetWeekdayDate(time.Tuesday)
+	currentWednesday := getTargetWeekdayDate(time.Wednesday)
+	currentThursday := getTargetWeekdayDate(time.Thursday)
+	currentFriday := getTargetWeekdayDate(time.Friday)
+
+	nextMondayDate1 := currentMonday.AddDate(0, 0, 7)
+	nextTuesdayDate1 := currentTuesday.AddDate(0, 0, 7)
+	nextWednesdayDate1 := currentWednesday.AddDate(0, 0, 7)
+	nextThursdayDate1 := currentThursday.AddDate(0, 0, 7)
+	nextFridayDate1 := currentFriday.AddDate(0, 0, 7)
 
 	nextMondayDate2 := nextMondayDate1.AddDate(0, 0, 7)
 	nextTuesdayDate2 := nextTuesdayDate1.AddDate(0, 0, 7)
 	nextWednesdayDate2 := nextWednesdayDate1.AddDate(0, 0, 7)
 	nextThursdayDate2 := nextThursdayDate1.AddDate(0, 0, 7)
 	nextFridayDate2 := nextFridayDate1.AddDate(0, 0, 7)
+
+	todo = append(todo, generateUnixTime(currentMonday, config.Setups.CurrentMonday)...)
+	todo = append(todo, generateUnixTime(currentTuesday, config.Setups.CurrentTuesday)...)
+	todo = append(todo, generateUnixTime(currentWednesday, config.Setups.CurrentWednesday)...)
+	todo = append(todo, generateUnixTime(currentThursday, config.Setups.CurrentThursday)...)
+	todo = append(todo, generateUnixTime(currentFriday, config.Setups.CurrentFriday)...)
 
 	todo = append(todo, generateUnixTime(nextMondayDate1, config.Setups.NextMonday1)...)
 	todo = append(todo, generateUnixTime(nextTuesdayDate1, config.Setups.NextTuesday1)...)
@@ -142,7 +164,6 @@ func getTargetWeekdayDate(target time.Weekday) time.Time {
 	}
 
 	currentMonday := now.AddDate(0, 0, -(weekday - 1))
-	nextMonday := currentMonday.AddDate(0, 0, 7)
 
 	targetInt := int(target)
 	if targetInt == 0 {
@@ -150,7 +171,7 @@ func getTargetWeekdayDate(target time.Weekday) time.Time {
 	}
 
 	offset := targetInt - 1
-	return nextMonday.AddDate(0, 0, offset)
+	return currentMonday.AddDate(0, 0, offset)
 }
 
 func generateUnixTime(date time.Time, val int) []int64 {
