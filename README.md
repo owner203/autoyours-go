@@ -26,7 +26,11 @@ go run main.go
 
 ## Configuration
 
-Copy `config.toml` to the same directory as the binary and fill in your details:
+Copy the example config and fill in your details:
+
+```bash
+cp config.toml.example config.toml
+```
 
 ```toml
 [account]
