@@ -53,9 +53,25 @@ const (
 )
 
 const (
-	loginURL   = "https://gmoyours.dt-r.com/customer/ajaxLogin.php"
-	bookingURL = "https://gmoyours.dt-r.com/reservation/ajaxBooking.php"
+	loginURL      = "https://gmoyours.dt-r.com/customer/ajaxLogin.php"
+	bookingURL    = "https://gmoyours.dt-r.com/reservation/ajaxBooking.php"
+	bookingListURL = "https://gmoyours.dt-r.com/customer/reservation/ajaxViewList.php"
 )
+
+func retry(maxRetries int, delay time.Duration, fn func() error) error {
+	var err error
+	for i := 0; i < maxRetries; i++ {
+		err = fn()
+		if err == nil {
+			return nil
+		}
+		if i < maxRetries-1 {
+			fmt.Println("Retrying...")
+			time.Sleep(delay)
+		}
+	}
+	return err
+}
 
 var (
 	config Config
@@ -317,6 +333,45 @@ func bookingRequest(startUnixTime int64) error {
 	return nil
 }
 
+func bookingList() error {
+	log.Println("[bookingList]Begin")
+
+	req, err := http.NewRequest("GET", bookingListURL, nil)
+	if err != nil {
+		log.Printf("Failed to create request: %v", err)
+		return err
+	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("User-Agent", "Thunder Client (https://www.thunderclient.com)")
+	req.Header.Set("Cookie", cookie)
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error server access: %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		err = fmt.Errorf("error HTTP status (%s)", resp.Status)
+		log.Printf("Error HTTP status: %v", err)
+		return err
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Error reading response body: %v", err)
+		return err
+	}
+
+	fmt.Println(string(bodyBytes))
+	log.Println("[bookingList]End")
+	return nil
+}
+
 func main() {
 	err := configLoad()
 	if err != nil {
@@ -325,20 +380,27 @@ func main() {
 
 	todoGenerate()
 
-	err = accountLogin()
+	err = retry(5, 5*time.Second, accountLogin)
 	if err != nil {
 		log.Fatalf("Login failed: %v", err)
 	}
+
+	time.Sleep(1 * time.Second)
 
 	var wg sync.WaitGroup
 	for _, startUnixTime := range todo {
 		wg.Add(1)
 		go func(t int64) {
 			defer wg.Done()
-			if err := bookingRequest(t); err != nil {
-				log.Fatalf("Booking request for unix time %d failed: %v", startUnixTime, err)
+			if err := retry(5, 5*time.Second, func() error { return bookingRequest(t) }); err != nil {
+				log.Fatalf("Booking request for unix time %d failed: %v", t, err)
 			}
 		}(startUnixTime)
 	}
 	wg.Wait()
+
+	err = retry(5, 5*time.Second, bookingList)
+	if err != nil {
+		log.Fatalf("Booking list failed: %v", err)
+	}
 }
