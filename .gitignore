@@ -3,3 +3,6 @@ autoyours-go
 
 # Config (contains credentials)
 config.toml
+
+# Log file
+autoyours-go.log
