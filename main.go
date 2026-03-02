@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,7 +24,7 @@ type Account struct {
 	CustomerEmail       string `toml:"customer_email"`
 }
 
-type Setups struct {
+type Setup struct {
 	ServiceID        string `toml:"service_id"`
 	ServiceMenuID    string `toml:"service_menu_id"`
 	CurrentMonday    int    `toml:"current_monday"`
@@ -44,7 +46,7 @@ type Setups struct {
 
 type Config struct {
 	Account Account `toml:"account"`
-	Setups  Setups  `toml:"setups"`
+	Setup   Setup   `toml:"setups"`
 }
 
 const (
@@ -55,7 +57,7 @@ const (
 const (
 	loginURL      = "https://gmoyours.dt-r.com/customer/ajaxLogin.php"
 	bookingURL    = "https://gmoyours.dt-r.com/reservation/ajaxBooking.php"
-	bookingListURL = "https://gmoyours.dt-r.com/customer/reservation/ajaxViewList.php"
+	fetchBookingListURL = "https://gmoyours.dt-r.com/customer/reservation/ajaxViewList.php"
 )
 
 func retry(maxRetries int, delay time.Duration, fn func() error) error {
@@ -79,8 +81,8 @@ var (
 	cookie string
 )
 
-func configLoad() error {
-	log.Println("[configLoad]Begin")
+func loadConfig() error {
+	log.Println("[loadConfig]Begin")
 
 	file, err := os.Open(configFilePath + "/" + configFileName)
 	if err != nil {
@@ -93,12 +95,12 @@ func configLoad() error {
 		return err
 	}
 
-	configPrint()
-	log.Println("[configPrint]End")
+	printConfig()
+	log.Println("[printConfig]End")
 	return nil
 }
 
-func configPrint() {
+func printConfig() {
 	fmt.Println("[account]")
 	fmt.Println("login_id:", config.Account.LoginID)
 	fmt.Println("password:", config.Account.Password)
@@ -107,27 +109,27 @@ func configPrint() {
 	fmt.Println("customer_name:", config.Account.CustomerName)
 	fmt.Println("customer_email:", config.Account.CustomerEmail)
 	fmt.Println("[setups]")
-	fmt.Println("service_id:", config.Setups.ServiceID)
-	fmt.Println("service_menu_id:", config.Setups.ServiceMenuID)
-	fmt.Println("current_monday:", config.Setups.CurrentMonday)
-	fmt.Println("current_tuesday:", config.Setups.CurrentTuesday)
-	fmt.Println("current_wednesday:", config.Setups.CurrentWednesday)
-	fmt.Println("current_thursday:", config.Setups.CurrentThursday)
-	fmt.Println("current_friday:", config.Setups.CurrentFriday)
-	fmt.Println("next_monday1:", config.Setups.NextMonday1)
-	fmt.Println("next_tuesday1:", config.Setups.NextTuesday1)
-	fmt.Println("next_wednesday1:", config.Setups.NextWednesday1)
-	fmt.Println("next_thursday1:", config.Setups.NextThursday1)
-	fmt.Println("next_friday1:", config.Setups.NextFriday1)
-	fmt.Println("next_monday2:", config.Setups.NextMonday2)
-	fmt.Println("next_tuesday2:", config.Setups.NextTuesday2)
-	fmt.Println("next_wednesday2:", config.Setups.NextWednesday2)
-	fmt.Println("next_thursday2:", config.Setups.NextThursday2)
-	fmt.Println("next_friday2:", config.Setups.NextFriday2)
+	fmt.Println("service_id:", config.Setup.ServiceID)
+	fmt.Println("service_menu_id:", config.Setup.ServiceMenuID)
+	fmt.Println("current_monday:", config.Setup.CurrentMonday)
+	fmt.Println("current_tuesday:", config.Setup.CurrentTuesday)
+	fmt.Println("current_wednesday:", config.Setup.CurrentWednesday)
+	fmt.Println("current_thursday:", config.Setup.CurrentThursday)
+	fmt.Println("current_friday:", config.Setup.CurrentFriday)
+	fmt.Println("next_monday1:", config.Setup.NextMonday1)
+	fmt.Println("next_tuesday1:", config.Setup.NextTuesday1)
+	fmt.Println("next_wednesday1:", config.Setup.NextWednesday1)
+	fmt.Println("next_thursday1:", config.Setup.NextThursday1)
+	fmt.Println("next_friday1:", config.Setup.NextFriday1)
+	fmt.Println("next_monday2:", config.Setup.NextMonday2)
+	fmt.Println("next_tuesday2:", config.Setup.NextTuesday2)
+	fmt.Println("next_wednesday2:", config.Setup.NextWednesday2)
+	fmt.Println("next_thursday2:", config.Setup.NextThursday2)
+	fmt.Println("next_friday2:", config.Setup.NextFriday2)
 }
 
-func todoGenerate() {
-	log.Println("[todoGenerate]Begin")
+func generateTodo() {
+	log.Println("[generateTodo]Begin")
 
 	currentMonday := getTargetWeekdayDate(time.Monday)
 	currentTuesday := getTargetWeekdayDate(time.Tuesday)
@@ -147,29 +149,29 @@ func todoGenerate() {
 	nextThursdayDate2 := nextThursdayDate1.AddDate(0, 0, 7)
 	nextFridayDate2 := nextFridayDate1.AddDate(0, 0, 7)
 
-	todo = append(todo, generateUnixTime(currentMonday, config.Setups.CurrentMonday)...)
-	todo = append(todo, generateUnixTime(currentTuesday, config.Setups.CurrentTuesday)...)
-	todo = append(todo, generateUnixTime(currentWednesday, config.Setups.CurrentWednesday)...)
-	todo = append(todo, generateUnixTime(currentThursday, config.Setups.CurrentThursday)...)
-	todo = append(todo, generateUnixTime(currentFriday, config.Setups.CurrentFriday)...)
+	todo = append(todo, generateUnixTime(currentMonday, config.Setup.CurrentMonday)...)
+	todo = append(todo, generateUnixTime(currentTuesday, config.Setup.CurrentTuesday)...)
+	todo = append(todo, generateUnixTime(currentWednesday, config.Setup.CurrentWednesday)...)
+	todo = append(todo, generateUnixTime(currentThursday, config.Setup.CurrentThursday)...)
+	todo = append(todo, generateUnixTime(currentFriday, config.Setup.CurrentFriday)...)
 
-	todo = append(todo, generateUnixTime(nextMondayDate1, config.Setups.NextMonday1)...)
-	todo = append(todo, generateUnixTime(nextTuesdayDate1, config.Setups.NextTuesday1)...)
-	todo = append(todo, generateUnixTime(nextWednesdayDate1, config.Setups.NextWednesday1)...)
-	todo = append(todo, generateUnixTime(nextThursdayDate1, config.Setups.NextThursday1)...)
-	todo = append(todo, generateUnixTime(nextFridayDate1, config.Setups.NextFriday1)...)
+	todo = append(todo, generateUnixTime(nextMondayDate1, config.Setup.NextMonday1)...)
+	todo = append(todo, generateUnixTime(nextTuesdayDate1, config.Setup.NextTuesday1)...)
+	todo = append(todo, generateUnixTime(nextWednesdayDate1, config.Setup.NextWednesday1)...)
+	todo = append(todo, generateUnixTime(nextThursdayDate1, config.Setup.NextThursday1)...)
+	todo = append(todo, generateUnixTime(nextFridayDate1, config.Setup.NextFriday1)...)
 
-	todo = append(todo, generateUnixTime(nextMondayDate2, config.Setups.NextMonday2)...)
-	todo = append(todo, generateUnixTime(nextTuesdayDate2, config.Setups.NextTuesday2)...)
-	todo = append(todo, generateUnixTime(nextWednesdayDate2, config.Setups.NextWednesday2)...)
-	todo = append(todo, generateUnixTime(nextThursdayDate2, config.Setups.NextThursday2)...)
-	todo = append(todo, generateUnixTime(nextFridayDate2, config.Setups.NextFriday2)...)
+	todo = append(todo, generateUnixTime(nextMondayDate2, config.Setup.NextMonday2)...)
+	todo = append(todo, generateUnixTime(nextTuesdayDate2, config.Setup.NextTuesday2)...)
+	todo = append(todo, generateUnixTime(nextWednesdayDate2, config.Setup.NextWednesday2)...)
+	todo = append(todo, generateUnixTime(nextThursdayDate2, config.Setup.NextThursday2)...)
+	todo = append(todo, generateUnixTime(nextFridayDate2, config.Setup.NextFriday2)...)
 
 	if len(todo) == 0 {
 		log.Fatalf("Null todo list.")
 	} else {
 		fmt.Println(todo)
-		log.Println("[todoGenerate]End")
+		log.Println("[generateTodo]End")
 		return
 	}
 }
@@ -218,8 +220,8 @@ func generateUnixTime(date time.Time, val int) []int64 {
 	return result
 }
 
-func accountLogin() error {
-	log.Println("[accountLogin]Begin")
+func login() error {
+	log.Println("[login]Begin")
 
 	params := url.Values{}
 	params.Add("action", "login")
@@ -267,7 +269,7 @@ func accountLogin() error {
 	} else if bodyStr == "1" {
 		fmt.Println("Login succeeded.")
 		fmt.Println("Cookie:", cookie)
-		log.Println("[accountLogin]End")
+		log.Println("[login]End")
 		return nil
 	} else {
 		err = fmt.Errorf("login failed")
@@ -276,17 +278,17 @@ func accountLogin() error {
 	}
 }
 
-func bookingRequest(startUnixTime int64) error {
+func requestBooking(startUnixTime int64) error {
 	endUnixTime := startUnixTime + 1800
-	calendarID := fmt.Sprintf("%s.%s..%d.%d", config.Setups.ServiceID, config.Setups.ServiceMenuID, startUnixTime, endUnixTime)
+	calendarID := fmt.Sprintf("%s.%s..%d.%d", config.Setup.ServiceID, config.Setup.ServiceMenuID, startUnixTime, endUnixTime)
 
-	log.Printf("[bookingRequest]Begin (%s)\n", calendarID)
+	log.Printf("[requestBooking]Begin (%s)\n", calendarID)
 
 	params := url.Values{}
 	params.Add("action", "regist")
 	params.Add("booking_data[calendar_id]", calendarID)
-	params.Add("booking_data[service_id]", config.Setups.ServiceID)
-	params.Add("booking_data[service_menu_id]", config.Setups.ServiceMenuID)
+	params.Add("booking_data[service_id]", config.Setup.ServiceID)
+	params.Add("booking_data[service_menu_id]", config.Setup.ServiceMenuID)
 	params.Add("booking_data[start_unixtime]", fmt.Sprintf("%d", startUnixTime))
 	params.Add("booking_data[end_unixtime]", fmt.Sprintf("%d", endUnixTime))
 	params.Add("booking_data[num]", "1")
@@ -329,14 +331,55 @@ func bookingRequest(startUnixTime int64) error {
 		return err
 	}
 
-	log.Printf("[bookingRequest]End (%s)\n", calendarID)
+	log.Printf("[requestBooking]End (%s)\n", calendarID)
 	return nil
 }
 
-func bookingList() error {
-	log.Println("[bookingList]Begin")
+func parseBookingList(html string) {
+	countRe := regexp.MustCompile(`(\d+)件の予約があります`)
+	if m := countRe.FindStringSubmatch(html); len(m) > 1 {
+		fmt.Printf("Booking List: %s reservations\n", m[1])
+	} else {
+		fmt.Println("Booking List: 0 reservations")
+		return
+	}
 
-	req, err := http.NewRequest("GET", bookingListURL, nil)
+	idRe := regexp.MustCompile(`予約番号:\s*(R\d+)`)
+	dateRe := regexp.MustCompile(`(\d{4}/\d{2}/\d{2})\s+\(([月火水木金土日])\)`)
+	timeRe := regexp.MustCompile(`(\d{2}:\d{2})\s+-\s+(\d{2}:\d{2})`)
+	menuRe := regexp.MustCompile(`(セルリアン|フクラス)`)
+
+	items := strings.Split(html, `class="list_item"`)
+	for i := 1; i < len(items); i++ {
+		item := items[i]
+
+		id := ""
+		if m := idRe.FindStringSubmatch(item); len(m) > 1 {
+			id = m[1]
+		}
+		date, day := "", ""
+		if m := dateRe.FindStringSubmatch(item); len(m) > 2 {
+			date = m[1]
+			day = m[2]
+		}
+		startTime, endTime := "", ""
+		if m := timeRe.FindStringSubmatch(item); len(m) > 2 {
+			startTime = m[1]
+			endTime = m[2]
+		}
+		menu := ""
+		if m := menuRe.FindStringSubmatch(item); len(m) > 1 {
+			menu = m[1]
+		}
+
+		fmt.Printf("  %s  %s(%s) %s-%s  %s\n", id, date, day, startTime, endTime, menu)
+	}
+}
+
+func fetchBookingList() error {
+	log.Println("[fetchBookingList]Begin")
+
+	req, err := http.NewRequest("GET", fetchBookingListURL, nil)
 	if err != nil {
 		log.Printf("Failed to create request: %v", err)
 		return err
@@ -367,20 +410,20 @@ func bookingList() error {
 		return err
 	}
 
-	fmt.Println(string(bodyBytes))
-	log.Println("[bookingList]End")
+	parseBookingList(string(bodyBytes))
+	log.Println("[fetchBookingList]End")
 	return nil
 }
 
 func main() {
-	err := configLoad()
+	err := loadConfig()
 	if err != nil {
 		log.Fatalf("Bad config file: %v", err)
 	}
 
-	todoGenerate()
+	generateTodo()
 
-	err = retry(5, 5*time.Second, accountLogin)
+	err = retry(5, 5*time.Second, login)
 	if err != nil {
 		log.Fatalf("Login failed: %v", err)
 	}
@@ -392,14 +435,14 @@ func main() {
 		wg.Add(1)
 		go func(t int64) {
 			defer wg.Done()
-			if err := retry(5, 5*time.Second, func() error { return bookingRequest(t) }); err != nil {
+			if err := retry(5, 5*time.Second, func() error { return requestBooking(t) }); err != nil {
 				log.Fatalf("Booking request for unix time %d failed: %v", t, err)
 			}
 		}(startUnixTime)
 	}
 	wg.Wait()
 
-	err = retry(5, 5*time.Second, bookingList)
+	err = retry(5, 5*time.Second, fetchBookingList)
 	if err != nil {
 		log.Fatalf("Booking list failed: %v", err)
 	}
