@@ -1,12 +1,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -65,11 +67,6 @@ func newApp() *App {
 }
 
 const (
-	configFilePath = "."
-	configFileName = "config.toml"
-)
-
-const (
 	loginURL            = "https://gmoyours.dt-r.com/customer/ajaxLogin.php"
 	bookingURL          = "https://gmoyours.dt-r.com/reservation/ajaxBooking.php"
 	fetchBookingListURL = "https://gmoyours.dt-r.com/customer/reservation/ajaxViewList.php"
@@ -90,10 +87,10 @@ func retry(maxRetries int, delay time.Duration, fn func() error) error {
 	return err
 }
 
-func (a *App) loadConfig() error {
+func (a *App) loadConfig(configPath string) error {
 	log.Println("[loadConfig]Begin")
 
-	file, err := os.Open(configFilePath + "/" + configFileName)
+	file, err := os.Open(configPath)
 	if err != nil {
 		return err
 	}
@@ -459,7 +456,13 @@ func (a *App) fetchBookingList() error {
 }
 
 func main() {
-	logFile, err := os.OpenFile("autoyours-go.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	configPath := flag.String("c", "./config.toml", "path to config file")
+	flag.Parse()
+
+	configDir := filepath.Dir(*configPath)
+	logPath := filepath.Join(configDir, "autoyours-go.log")
+
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatalf("Failed to open log file: %v", err)
 	}
@@ -468,7 +471,7 @@ func main() {
 
 	app := newApp()
 
-	if err := app.loadConfig(); err != nil {
+	if err := app.loadConfig(*configPath); err != nil {
 		log.Fatalf("Bad config file: %v", err)
 	}
 
