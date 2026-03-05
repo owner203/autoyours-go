@@ -43,7 +43,7 @@ customer_email = "your-email@example.com"
 
 [setups]
 service_id = "S001"          # Tokyo(S001)
-service_menu_id = "S0000063" # Cerulean(S0000063) Fukulass(S0000064)
+service_menu_id = "S0000063" # Cerulean(S0000063) Fukuras(S0000064)
 current_monday = 0           # Current Monday
 current_tuesday = 0          # Current Tuesday
 current_wednesday = 0        # Current Wednesday
